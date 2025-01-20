@@ -1,0 +1,61 @@
+#!/usr/bin/env sh
+
+CC="${CC:-gcc}"
+SUDO="${SUDO:-sudo}"
+PREFIX="${PREFIX:-build}"
+
+case "$1" in
+    "-h"|"--help"|"help")
+        echo "$0: tiny build system"
+        echo
+        echo "commands:"
+        echo "help     - show this message"
+        echo "version  - show project version"
+        echo "info     - cat README.md"
+        echo "install  - change PREFIX to /usr"
+        echo
+        echo "envvars:"
+        echo "CC       - c compiler to use"
+        echo "CFLAGS   - flags for c compiler"
+        echo "PREFIX   - path to install dir (has the same structure as /usr)"
+        echo "MAKE_ALL - do not check and build everything"
+        echo "SUDO     - command to use for calling sudo"
+        exit 1
+        ;;
+    "-v"|"--version"|"v"|"ver"|"version")
+        cat VERSION
+        exit 0
+        ;;
+    "-i"|"--info"|"info")
+        cat README.md
+        exit 1
+        ;;
+    "install")
+        PREFIX=/usr
+        ;;
+esac
+
+if ! $SUDO true; then
+    echo "login failed"
+    exit 1
+fi
+
+_has() {
+    if [ "$MAKE_ALL" == "yes" ]; then return 1; fi
+    command -v "$1" &> /dev/null
+}
+
+_make() {
+    CHECK="${2:-"$1"}"
+    if _has /usr/bin/$CHECK; then
+        "$CC" src/$1-exec.c $CFLAGS -o "$PREFIX/bin/$1-exec-"
+    fi
+    $SUDO sh -c 'mv "'"$PREFIX/bin/$1-exec-"'" "'"$PREFIX/bin/$1-exec"'" && chown root:root "'"$PREFIX/bin/$1-exec"'" && chmod u+s "'"$PREFIX/bin/$1-exec"'"'
+}
+
+mkdir -p "$PREFIX/bin"
+
+_make light
+_make netns ip
+
+echo "installed in '$PREFIX'"
